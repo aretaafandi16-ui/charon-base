@@ -104,6 +104,44 @@ const DEFAULTS = {
     require_open_source: false,
     block_pausable: false,
   },
+  microcap: {
+    // Tuned for tokens centered around $500k market cap on Base.
+    // Goal: catch micro-caps that have proven liquidity/holder traction
+    // and are showing healthy 1h momentum, while staying clear of dust
+    // and obvious rugs.
+    name: 'microcap',
+    use_llm: true,
+    llm_min_confidence: 60,
+    min_sources: 1,
+    // ~10-20% of MC in liquidity is typical healthy.
+    min_liquidity_usd: 50_000,
+    // 30%+ of MC turning over in a day = real interest.
+    min_volume_24h_usd: 150_000,
+    // Allow up to ~7 days old. Older = stale; younger = caught.
+    max_age_minutes: 60 * 24 * 7,
+    // Sweet spot $250k–$1.2M centered on $500k.
+    min_marketcap_usd: 250_000,
+    max_marketcap_usd: 1_200_000,
+    // 300+ holders = some distribution, not one whale.
+    min_holders: 300,
+    // Demand at least flat-to-positive 1h momentum.
+    min_price_change_1h: 0.0,
+    // Don't chase parabolic 24h candles >300%.
+    max_price_change_24h: 3.0,
+    max_concurrent_positions: 4,
+    buy_eth: 0.01,
+    tp_percent: 100,
+    sl_percent: 30,
+    trailing_tp_percent: 30,
+    max_hold_ms: 8 * 60 * 60 * 1000,
+    partial_tp: 1,
+    // Security gates — strict but realistic for micro-caps.
+    block_honeypot: true,
+    max_buy_tax_pct: 5,
+    max_sell_tax_pct: 5,
+    require_open_source: true,
+    block_pausable: true,
+  },
 };
 
 function ensureDefaults() {
