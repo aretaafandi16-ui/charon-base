@@ -36,6 +36,8 @@ const config = {
   },
   enrichment: {
     moralisApiKey: process.env.MORALIS_API_KEY || '',
+    goplusAppKey: process.env.GOPLUS_APP_KEY || '',
+    goplusAppSecret: process.env.GOPLUS_APP_SECRET || '',
   },
   wallet: {
     privateKey: process.env.EVM_PRIVATE_KEY || '',

@@ -1,0 +1,23 @@
+=== git status ===
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.repo-state.txt
+
+nothing added to commit but untracked files present (use "git add" to track)
+
+=== git log -10 ===
+679ef35 Register Telegram bot commands so they appear in the / menu
+f42d016 Add microcap strategy tuned for ~$500k MC tokens on Base
+68442fb Make .env override inherited shell env to prevent stale token/key bugs
+3a4929a Document verified OpenAI-compatible LLM endpoints (NVIDIA, MiniMax, Groq)
+2c7c6ed Replace GeckoTerminal enrichment with GoPlus + Moralis stack, add rate-limit queues and security filters
+71af5ff Initial Charon-Base trench agent
+
+=== git diff origin/main ===
+(empty = nothing unpushed)
+
+=== branch tracking ===
+origin/main
