@@ -24,7 +24,7 @@ function gateCandidate(candidate, strategy) {
   if (s.max_marketcap_usd != null && (c.marketCap ?? c.fdv ?? Infinity) > s.max_marketcap_usd) {
     reasons.push(`mc>${s.max_marketcap_usd}`);
   }
-  if (s.min_holders != null && c.holders != null && c.holders < s.min_holders) {
+  if (s.min_holders != null && c.holders != null && c.holders > 0 && c.holders < s.min_holders) {
     reasons.push(`holders<${s.min_holders}`);
   }
   if (s.min_price_change_1h != null && c.priceChange1h != null &&

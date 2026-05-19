@@ -36,10 +36,19 @@ async function processBatch(rawCandidates) {
       reason: reasons.join(',') || 'ok',
       ts: nowMs(),
     });
-    if (passed) filtered.push(enriched);
+    if (passed) {
+      filtered.push(enriched);
+    } else {
+      log(`[filter] ❌ ${enriched.symbol || enriched.address.slice(0,10)} → ${reasons.join(', ')}`);
+    }
   }
 
-  if (filtered.length === 0) return { reason: 'no_candidates_passed' };
+  if (filtered.length === 0) {
+    log(`[pipeline] ${rawCandidates.length} enriched, 0 passed ${strategyId} filters`);
+    return { reason: 'no_candidates_passed' };
+  }
+
+  log(`[pipeline] ${filtered.length}/${rawCandidates.length} passed ${strategyId} → LLM batch`);
 
   const recent = filtered
     .sort((a, b) => (a.ageMinutes ?? 9e9) - (b.ageMinutes ?? 9e9))
