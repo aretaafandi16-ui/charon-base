@@ -21,6 +21,8 @@ const COMMAND_LIST = [
   { command: 'walletadd', description: 'Save a wallet to watch' },
   { command: 'walletremove', description: 'Remove a saved wallet' },
   { command: 'wallets', description: 'List saved wallets' },
+  { command: 'model', description: 'View or set LLM model' },
+  { command: 'trending', description: 'Show LunarCrush trending tokens & topics' },
 ];
 
 async function registerCommands(b) {

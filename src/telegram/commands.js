@@ -1,5 +1,7 @@
 'use strict';
 
+const config = require('../config');
+const { fetchTrendingCoins, fetchTrendingTopics } = require('../enrichment/lunarcrush');
 const { stmts, get } = require('../db');
 const {
   listStrategies,
@@ -11,7 +13,7 @@ const {
 const { resolveIntent } = require('../liveExecutor');
 const { summarizeWindow, listLessons, recordLesson } = require('../learning/lessons');
 const { formatCandidate, formatPosition } = require('../format');
-const { mainMenuKeyboard, strategyKeyboard, intentKeyboard } = require('./menu');
+const { mainMenuKeyboard, strategyKeyboard, intentKeyboard, modelKeyboard } = require('./menu');
 const { nowMs, fmtUsd, pct } = require('../utils');
 
 function sendableErr(e) {
@@ -200,6 +202,54 @@ async function handleCommand(bot, chatId, msg) {
       return;
     }
 
+    case '/model': {
+      if (args[0]) {
+        const newModel = args.join(' ');
+        config.llm.model = newModel;
+        stmts().setSetting.run({ key: 'llm_model', value: newModel });
+        await bot.sendMessage(chatId, `LLM model → <b>${newModel}</b>`, { parse_mode: 'HTML' });
+      } else {
+        await bot.sendMessage(
+          chatId,
+          `<b>Current LLM model:</b> <code>${config.llm.model}</code>\n\nUsage: /model &lt;name&gt;\nExample: /model gpt-4o`,
+          { parse_mode: 'HTML' },
+        );
+      }
+      return;
+    }
+
+    case '/trending': {
+      const sub = args[0] || 'coins';
+      if (sub === 'topics') {
+        const topics = await fetchTrendingTopics({ limit: 15 });
+        if (topics.length === 0) {
+          await bot.sendMessage(chatId, '⚠ No trending topics. LunarCrush requires an active subscription.\nUpgrade: https://lunarcrush.com/pricing');
+          return;
+        }
+        const lines = topics.map(
+          (t, i) => `${i + 1}. <b>${t.title || t.topic}</b>  posts: ${t.socialVolume ?? '—'}  interactions: ${t.interactions ?? '—'}`,
+        );
+        await bot.sendMessage(chatId, `<b>🔥 Trending Topics (LunarCrush)</b>\n\n${lines.join('\n')}`, { parse_mode: 'HTML' });
+      } else {
+        const coins = await fetchTrendingCoins({ sort: 'interactions', limit: 15 });
+        if (coins.length === 0) {
+          await bot.sendMessage(chatId, '⚠ No trending coins. LunarCrush requires an active subscription.\nUpgrade: https://lunarcrush.com/pricing');
+          return;
+        }
+        const lines = coins.map(
+          (c, i) =>
+            `${i + 1}. <b>${c.symbol}</b> ${c.name || ''}\n` +
+            `   galaxy: ${c.galaxyScore ?? '—'}  social: ${c.socialVolume24h ?? '—'}  interactions: ${c.interactions24h ?? '—'}  sentiment: ${c.sentiment ?? '—'}`,
+        );
+        await bot.sendMessage(
+          chatId,
+          `<b>🔥 Trending on Base (LunarCrush)</b>\n\n${lines.join('\n')}`,
+          { parse_mode: 'HTML' },
+        );
+      }
+      return;
+    }
+
     default:
       // ignore unknown
   }
@@ -240,6 +290,29 @@ async function handleCallback(bot, query) {
     }
   } else if (data === 'menu:positions') {
     await handleCommand(bot, chatId, { text: '/positions' });
+  } else if (data === 'menu:trending') {
+    await bot.sendMessage(chatId, 'Pick trending view:', {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🪙 Coins (Base)', callback_data: 'trending:coins' }],
+          [{ text: '💬 Topics', callback_data: 'trending:topics' }],
+        ],
+      },
+    });
+  } else if (data === 'trending:coins') {
+    await handleCommand(bot, chatId, { text: '/trending coins' });
+  } else if (data === 'trending:topics') {
+    await handleCommand(bot, chatId, { text: '/trending topics' });
+  } else if (data === 'menu:model') {
+    await bot.sendMessage(chatId, `<b>Current model:</b> <code>${config.llm.model}</code>\nPick a model or use /model &lt;name&gt;:`, {
+      parse_mode: 'HTML',
+      reply_markup: modelKeyboard(),
+    });
+  } else if (data.startsWith('model:set:')) {
+    const model = data.slice('model:set:'.length);
+    config.llm.model = model;
+    stmts().setSetting.run({ key: 'llm_model', value: model });
+    await bot.sendMessage(chatId, `LLM model → <b>${model}</b>`, { parse_mode: 'HTML' });
   } else if (data === 'menu:lessons') {
     await handleCommand(bot, chatId, { text: '/lessons' });
   } else if (data === 'menu:filters') {

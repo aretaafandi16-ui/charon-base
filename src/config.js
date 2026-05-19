@@ -38,6 +38,7 @@ const config = {
     moralisApiKey: process.env.MORALIS_API_KEY || '',
     goplusAppKey: process.env.GOPLUS_APP_KEY || '',
     goplusAppSecret: process.env.GOPLUS_APP_SECRET || '',
+    lunarcrushApiKey: process.env.LUNARCRUSH_API_KEY || '',
   },
   wallet: {
     privateKey: process.env.EVM_PRIVATE_KEY || '',

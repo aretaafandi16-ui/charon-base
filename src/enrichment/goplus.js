@@ -70,8 +70,12 @@ function bool01(v) {
 
 function shapeReport(r) {
   if (!r) return null;
-  const buyTax = num(r.buy_tax);
-  const sellTax = num(r.sell_tax);
+  // GoPlus returns tax as a decimal fraction (e.g. 0.05 = 5%).
+  // Convert to percentage points to match strategy config (max_buy_tax_pct etc.).
+  const buyTaxRaw = num(r.buy_tax);
+  const sellTaxRaw = num(r.sell_tax);
+  const buyTax = buyTaxRaw != null ? buyTaxRaw * 100 : null;
+  const sellTax = sellTaxRaw != null ? sellTaxRaw * 100 : null;
   const isHoneypot = bool01(r.is_honeypot);
   const isOpenSource = bool01(r.is_open_source);
   const isProxy = bool01(r.is_proxy);

@@ -19,6 +19,9 @@ function formatCandidate(c) {
     `tax buy/sell: ${sec.buyTax ?? '—'}/${sec.sellTax ?? '—'}  honeypot: ${sec.isHoneypot === true ? 'YES' : sec.isHoneypot === false ? 'no' : '—'}`,
     `sources: ${(c.sources || []).join(', ') || '—'}`,
   ];
+  if (c.galaxyScore != null || c.socialVolume24h != null) {
+    lines.push(`social: galaxy=${c.galaxyScore ?? '—'}  vol=${c.socialVolume24h ?? '—'}  interactions=${c.interactions24h ?? '—'}  sentiment=${c.sentiment ?? '—'}`);
+  }
   if (c.dexUrl) lines.push(`url: ${escape(c.dexUrl)}`);
   return lines.join('\n');
 }

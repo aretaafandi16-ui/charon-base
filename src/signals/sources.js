@@ -5,6 +5,9 @@ const PQueue = require('p-queue').default;
 const config = require('../config');
 const { warn } = require('../utils');
 
+const { fetchTrendingCoins } = require('../enrichment/lunarcrush');
+const { fetchCoinGeckoTrending } = require('./coingecko');
+
 const BASE_CHAIN_ID = 8453;
 const BASE_CG_NETWORK = 'base';
 
@@ -176,9 +179,21 @@ async function fetchCustomServer() {
   }
 }
 
+async function fetchLunarcrushTrending() {
+  try {
+    const coins = await fetchTrendingCoins({ sort: 'interactions_24h', limit: 50 });
+    // Only include coins that have a resolved Base address
+    return coins.filter((c) => c.address);
+  } catch (e) {
+    warn('lunarcrush signal fetch failed:', e.message);
+    return [];
+  }
+}
+
 const SOURCE_FETCHERS = {
   dexscreener: fetchDexscreenerTrending,
   geckoterminal: fetchGeckoterminalTrending,
+  lunarcrush: fetchLunarcrushTrending,
   custom: fetchCustomServer,
 };
 

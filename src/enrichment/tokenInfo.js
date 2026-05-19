@@ -3,6 +3,7 @@
 const { enrichFromDexscreener } = require('./dexscreener');
 const { enrichFromGoplus } = require('./goplus');
 const { enrichFromMoralis } = require('./moralis');
+const { fetchCoinSocial } = require('./lunarcrush');
 
 function mergeNonNull(target, src) {
   if (!src) return;
@@ -14,15 +15,17 @@ function mergeNonNull(target, src) {
 }
 
 async function enrichCandidate(c) {
-  const [dex, gp, mr] = await Promise.all([
+  const [dex, gp, mr, lc] = await Promise.all([
     enrichFromDexscreener(c.address),
     enrichFromGoplus(c.address),
     enrichFromMoralis(c.address),
+    c.symbol ? fetchCoinSocial(c.symbol) : Promise.resolve(null),
   ]);
   const merged = { ...c };
   mergeNonNull(merged, dex);
   mergeNonNull(merged, gp);
   mergeNonNull(merged, mr);
+  mergeNonNull(merged, lc);
   // Always overwrite security flags from goplus when available.
   if (gp) {
     merged.security = {

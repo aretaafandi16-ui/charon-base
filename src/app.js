@@ -14,6 +14,11 @@ const { log, err, warn } = require('./utils');
 async function startApp() {
   initDb();
   ensureDefaults();
+
+  // Restore persisted LLM model if previously changed via /model
+  const savedModel = require('./db').stmts().getSetting.get('llm_model');
+  if (savedModel?.value) config.llm.model = savedModel.value;
+
   tg.start();
 
   log(`[charon-base] mode=${config.execution.mode} router=${config.execution.router}`);

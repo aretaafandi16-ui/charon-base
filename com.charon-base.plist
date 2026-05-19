@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.charon-base</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>index.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/macbookprom1/Downloads/charon-base</string>
+
+  <!-- Start on login/boot -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Restart on crash/exit (keeps retrying) -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Wait 5s before restarting after a crash -->
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+
+  <!-- Logs -->
+  <key>StandardOutPath</key>
+  <string>/Users/macbookprom1/Downloads/charon-base/logs/stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/macbookprom1/Downloads/charon-base/logs/stderr.log</string>
+</dict>
+</plist>
