@@ -22,11 +22,19 @@ async function processBatch(rawCandidates) {
     return { reason: 'max_positions_reached' };
   }
 
+  // Dedup: skip tokens that already have an open position.
+  const openAddresses = new Set(
+    open.map((p) => String(p.address || '').toLowerCase()),
+  );
+
   const filtered = [];
   const s = stmts();
   // Enrich one-by-one to keep public APIs (DexScreener, GoPlus) under their
   // per-second limits. Internal queues add their own backoff on top.
   for (const c of rawCandidates) {
+    if (openAddresses.has(String(c.address).toLowerCase())) {
+      continue; // already holding a position in this token
+    }
     const enriched = await enrichCandidate(c);
     const { passed, reasons } = gateCandidate(enriched, strategy);
     s.insertFilterResult.run({
