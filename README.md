@@ -15,12 +15,12 @@ financial result. You are responsible for any funds you point at it.
 
 ## Flow
 
-1. Charon-Base polls signal sources (DexScreener, GeckoTerminal, optional custom
-   server) every `SIGNAL_POLL_MS`.
+1. Charon-Base polls signal sources (DexScreener, CoinGecko Trending,
+   GeckoTerminal, LunarCrush, optional custom server) every `SIGNAL_POLL_MS`.
 2. The active strategy gates source count, liquidity, volume, age, market cap,
    holders, and price-change quality.
-3. Passing candidates are enriched with token info, DexScreener pair data, and
-   GeckoTerminal token metadata.
+3. Passing candidates are enriched with token info, DexScreener pair data,
+   GoPlus security, Moralis analytics, and LunarCrush social metrics.
 4. The LLM screens up to `LLM_CANDIDATE_PICK_COUNT` recent candidates and may
    pick one `BUY`.
 5. Charon routes approved buys through `dry_run`, `confirm`, or `live`.
@@ -32,13 +32,17 @@ financial result. You are responsible for any funds you point at it.
 DexScreener is the default signal source — public, free, no API key:
 
 - DexScreener token profiles + pair lookup (Base chain)
+- CoinGecko Trending — top 15 trending coins globally, filtered for Base (free, no key)
 - GeckoTerminal trending pools (optional, rate-limited ≈30 req/min)
+- LunarCrush MCP — social trending for Base ecosystem (requires paid subscription)
 - Custom Charon-style server (optional)
 
 ```
-SIGNAL_SOURCES=dexscreener                       # default, recommended
-SIGNAL_SOURCES=dexscreener,geckoterminal         # add GeckoTerminal trending
-SIGNAL_SOURCES=dexscreener,custom                # add private server
+SIGNAL_SOURCES=dexscreener                       # default
+SIGNAL_SOURCES=dexscreener,coingecko             # + CoinGecko trending (recommended)
+SIGNAL_SOURCES=dexscreener,coingecko,geckoterminal  # + GeckoTerminal
+SIGNAL_SOURCES=dexscreener,lunarcrush            # + LunarCrush (needs subscription)
+SIGNAL_SOURCES=dexscreener,custom                # + private server
 SIGNAL_SERVER_URL=https://your-server/api
 SIGNAL_SERVER_KEY=your_key
 ```
@@ -54,6 +58,8 @@ Charon-Base uses a public GMGN-equivalent stack instead of a single proprietary 
   marketcap, price change windows, pair URL.
 - **Moralis Token API** — optional, free key at https://moralis.com.
   Adds richer holder analytics and 24h buyer/seller counts.
+- **LunarCrush** — optional (requires subscription). Adds Galaxy Score,
+  social volume, interactions, sentiment per token.
 
 Each enricher has its own rate-limited queue with response caching, so
 hammering `SIGNAL_POLL_MS` low won't blow past public limits.
@@ -88,6 +94,13 @@ For PM2:
 ```
 pm2 start index.js --name charon-base
 pm2 save
+```
+
+For macOS launchd (auto-start on boot + auto-restart on crash):
+
+```bash
+cp com.charon-base.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.charon-base.plist
 ```
 
 ## Required Config
@@ -157,6 +170,13 @@ Any OpenAI-compatible endpoint works. Each strategy has its own
 Set `ENABLE_LLM=false` to disable globally. Strategies with `use_llm: false`
 (e.g. `degen`) auto-approve any candidate that passes filters.
 
+Change the model at runtime via Telegram:
+
+```
+/model gpt-4o
+/model moonshotai/kimi-k2.6
+```
+
 ## Strategies
 
 Use `/menu → Strategy` or commands:
@@ -167,6 +187,7 @@ Use `/menu → Strategy` or commands:
 /strategy dip_buy
 /strategy smart_money
 /strategy degen
+/strategy microcap
 /stratset sniper tp_percent 75
 ```
 
@@ -176,6 +197,7 @@ Default strategies:
 - `dip_buy`: waits for negative 24h price-change dip on more mature tokens.
 - `smart_money`: stricter holder/liquidity quality, partial TP support.
 - `degen`: lower thresholds, rule-based (no LLM).
+- `microcap`: sweet spot $250k–$1.2M market cap on Base.
 
 Strategy settings are stored in SQLite and hot-read. Menu changes apply without
 restart.
@@ -183,18 +205,20 @@ restart.
 ## Telegram Commands
 
 ```
-/menu
-/strategy
-/stratset <strategy_id> <key> <value>
-/positions
-/candidate <address>
-/filters
-/pnl
-/learn <window>          # 1h | 24h | 7d
-/lessons
-/walletadd <label> <address>
-/walletremove <label>
-/wallets
+/menu                           Main menu with inline buttons
+/strategy [id]                  List or switch active strategy
+/stratset <id> <key> <value>    Set a strategy parameter
+/positions                      Show open positions
+/candidate <address>            Inspect a token by address
+/filters                        Show filters of active strategy
+/pnl                            7-day PnL summary
+/model [name]                   View or change LLM model
+/trending [coins|topics]        Show trending tokens/topics (CoinGecko/LunarCrush)
+/learn <window>                 Record a lesson (1h|24h|7d)
+/lessons                        Show recent lessons
+/walletadd <label> <address>    Save a wallet to watch
+/walletremove <label>           Remove a saved wallet
+/wallets                        List saved wallets
 ```
 
 ## Storage
@@ -208,8 +232,32 @@ Charon-Base uses `charon-base.sqlite` as source of truth. It stores:
 - saved wallets
 - strategy configs
 - learning runs and lessons
+- runtime settings (active strategy, LLM model override)
 
 Open positions resume monitoring after restart.
+
+## Auto-start (macOS)
+
+A `com.charon-base.plist` launchd agent is included. It:
+- Starts the bot on login/boot (`RunAtLoad`)
+- Auto-restarts if the process exits for any reason (`KeepAlive`)
+- Waits 5 seconds between restarts (`ThrottleInterval`)
+- Logs to `logs/stdout.log` and `logs/stderr.log`
+
+Install:
+
+```bash
+cp com.charon-base.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.charon-base.plist
+```
+
+Manage:
+
+```bash
+launchctl list | grep charon                     # check status
+launchctl kickstart -k gui/$(id -u)/com.charon-base  # force restart
+launchctl unload ~/Library/LaunchAgents/com.charon-base.plist  # stop
+```
 
 ## Verification
 
@@ -222,11 +270,18 @@ npm run check
 SQLite/menu settings are hot-read by the bot. API keys, wallet key, RPC URL,
 and polling intervals are `.env` values and require a restart.
 
+The LLM model can be changed at runtime via `/model <name>` — persisted in
+SQLite and survives restarts.
+
 ## API Usage Notes
 
 - DexScreener: public, no key, but rate-limited at high QPS. Default poll is
   30s.
+- CoinGecko: public, no key. `/search/trending` returns top 15 globally.
+  Rate limit ~30 req/min.
 - GeckoTerminal: public, no key.
+- LunarCrush MCP: requires `LUNARCRUSH_API_KEY` + paid subscription for data
+  access. Session management handled automatically.
 - 0x Swap API v2: requires `ZEROEX_API_KEY` for production; `0x-version: v2`
   header is sent automatically.
 - Base RPC: position monitoring polls every `POSITION_CHECK_MS`. Use a paid
@@ -241,3 +296,5 @@ and polling intervals are `.env` values and require a restart.
   polling loop.
 - The Uniswap V3 router path is intentionally a stub. Use 0x by default; extend
   `src/execution/uniswap.js` only if you need Uniswap-specific routing.
+- GoPlus tax values are converted to percentage points internally to match
+  strategy config thresholds (e.g. 5 = 5% tax).

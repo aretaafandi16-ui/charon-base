@@ -40,6 +40,7 @@ Telegram), dan `live` (eksekusi otomatis).
 charon-base/
 ├── index.js                    # Entry point — load dotenv lalu start app
 ├── package.json
+├── com.charon-base.plist       # macOS launchd auto-start agent
 ├── README.md                   # Versi singkat (English)
 ├── DOCS.id.md                  # Dokumen ini
 ├── .env / .env.example         # Konfigurasi rahasia
@@ -53,12 +54,14 @@ charon-base/
     │   └── index.js            # better-sqlite3, schema, prepared stmts
     ├── signals/
     │   ├── poller.js           # Loop polling tiap SIGNAL_POLL_MS
-    │   └── sources.js          # Adaptor DexScreener/GeckoTerminal/custom
+    │   ├── sources.js          # Adaptor DexScreener/GeckoTerminal/CoinGecko/LunarCrush/custom
+    │   └── coingecko.js        # CoinGecko trending (free, no key)
     ├── enrichment/
     │   ├── tokenInfo.js        # Aggregator semua enricher
     │   ├── dexscreener.js      # Harga + likuiditas + volume
     │   ├── goplus.js           # Honeypot + tax + holders + open-source
-    │   └── moralis.js          # Holder analytics tambahan (opsional)
+    │   ├── moralis.js          # Holder analytics tambahan (opsional)
+    │   └── lunarcrush.js       # Social metrics via MCP (opsional, berbayar)
     ├── execution/
     │   ├── router.js           # Switch zeroex/uniswap
     │   ├── zeroex.js           # 0x Swap API v2 (default)
@@ -71,7 +74,7 @@ charon-base/
     │   └── positionMonitor.js  # Cek TP/SL/trailing tiap POSITION_CHECK_MS
     ├── telegram/
     │   ├── bot.js              # node-telegram-bot-api + setMyCommands
-    │   ├── commands.js         # Handler /menu /strategy /pnl, dll
+    │   ├── commands.js         # Handler /menu /strategy /pnl /model /trending dll
     │   └── menu.js             # Inline keyboard
     └── learning/
         └── lessons.js          # /learn dan /lessons (PnL summary)
@@ -202,6 +205,28 @@ pm2 save
 pm2 startup     # ikuti instruksi yang muncul
 ```
 
+Untuk macOS, gunakan launchd (sudah disertakan file plist):
+
+```bash
+cp com.charon-base.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.charon-base.plist
+```
+
+Fitur launchd:
+- Auto-start saat boot/login
+- Auto-restart saat crash atau network mati
+- Log ke `logs/stdout.log` dan `logs/stderr.log`
+- Jeda 5 detik antar restart
+
+Kelola:
+
+```bash
+launchctl list | grep charon                     # cek status
+launchctl kickstart -k gui/$(id -u)/com.charon-base  # force restart
+launchctl unload ~/Library/LaunchAgents/com.charon-base.plist  # stop
+tail -f logs/stdout.log                          # lihat log
+```
+
 ### 7. Coba dari Telegram
 
 Buka chat dengan bot, kirim `/menu`. Kalau menu muncul, instalasi sukses.
@@ -225,7 +250,7 @@ TELEGRAM_CHAT_ID=
 ### Sumber sinyal
 
 ```
-SIGNAL_SOURCES=dexscreener
+SIGNAL_SOURCES=dexscreener,coingecko
 SIGNAL_POLL_MS=30000
 SIGNAL_SERVER_URL=
 SIGNAL_SERVER_KEY=
@@ -233,8 +258,9 @@ DEXSCREENER_BASE_URL=https://api.dexscreener.com
 GECKOTERMINAL_BASE_URL=https://api.geckoterminal.com/api/v2
 ```
 
-- `SIGNAL_SOURCES` — comma-separated. Pilihan: `dexscreener`, `geckoterminal`,
-  `custom`. Default `dexscreener` (paling stabil).
+- `SIGNAL_SOURCES` — comma-separated. Pilihan: `dexscreener`, `coingecko`,
+  `geckoterminal`, `lunarcrush`, `custom`. Default `dexscreener`.
+  Rekomendasi: `dexscreener,coingecko` (keduanya gratis).
 - `SIGNAL_POLL_MS` — interval polling. Jangan kurang dari 15000 (15 detik) untuk
   hindari kena rate-limit.
 
@@ -242,10 +268,12 @@ GECKOTERMINAL_BASE_URL=https://api.geckoterminal.com/api/v2
 
 ```
 MORALIS_API_KEY=
+LUNARCRUSH_API_KEY=
 ```
 
 GoPlus dipakai otomatis tanpa API key. Moralis opsional — daftar gratis di
-https://moralis.com untuk dapat holder analytics tambahan.
+https://moralis.com untuk dapat holder analytics tambahan. LunarCrush opsional —
+membutuhkan subscription berbayar di https://lunarcrush.com/pricing.
 
 ### RPC Base
 
@@ -330,8 +358,12 @@ DB_PATH=./charon-base.sqlite
 | Source | Key | Catatan |
 |---|---|---|
 | `dexscreener` | tidak perlu | Trending profile + lookup pair Base. Stabil, default. |
+| `coingecko` | tidak perlu | Top 15 trending coins global, filter Base. Free, no key. |
 | `geckoterminal` | tidak perlu | Trending pools `base`. Rate limit ketat (~30 req/min). |
+| `lunarcrush` | `LUNARCRUSH_API_KEY` + subscription | Social trending Base ecosystem via MCP. |
 | `custom` | `SIGNAL_SERVER_URL` + `SIGNAL_SERVER_KEY` | Endpoint Charon-style Anda sendiri. |
+
+Rekomendasi: `SIGNAL_SOURCES=dexscreener,coingecko` — keduanya gratis dan stabil.
 
 Saat banyak source aktif, kandidat di-merge berdasarkan address. Setiap source
 yang mendeteksi token sama akan menambah entri ke `sources[]`. Strategi bisa
@@ -370,7 +402,7 @@ Charon-Base **tidak** pakai GMGN proprietary. Sebagai gantinya:
 
 - `holders` — total pemegang
 - `lpHolders` — pemegang LP token
-- `buyTax` / `sellTax` — pajak transaksi (%)
+- `buyTax` / `sellTax` — pajak transaksi (%) — **dikonversi dari desimal ke persen**
 - `isHoneypot` — true/false (ini gate kritikal)
 - `isOpenSource` — kontrak verified atau tidak
 - `isProxy` / `isMintable` / `transferPausable` — flag rugpull
@@ -388,6 +420,14 @@ Charon-Base **tidak** pakai GMGN proprietary. Sebagai gantinya:
 - `holders` lebih akurat daripada GoPlus
 - `top10HolderPct` — distribusi paus
 - `totalBuyers24h` / `totalSellers24h`
+
+### LunarCrush (opsional, perlu subscription)
+
+- `galaxyScore` — Galaxy Score™ (0-100)
+- `socialVolume24h` — jumlah post/mention 24h
+- `interactions24h` — total engagement (likes, shares, comments)
+- `socialDominance` — dominasi sosial vs crypto lain
+- `sentiment` — sentiment score
 
 Setiap enricher punya **rate-limit queue** dan **cache 60 detik–5 menit**, jadi
 bot tidak akan banjir limit walau polling sering.
@@ -562,6 +602,8 @@ samping tombol attach file.
 | `/candidate` | Inspect token by address | `/candidate 0xabc...` |
 | `/filters` | Tampilkan parameter strategi aktif | `/filters` |
 | `/pnl` | Ringkasan PnL 7 hari | `/pnl` |
+| `/model` | Lihat atau ganti LLM model | `/model gpt-4o` |
+| `/trending` | Trending tokens/topics (CoinGecko/LunarCrush) | `/trending topics` |
 | `/learn` | Catat lesson untuk window | `/learn 24h` |
 | `/lessons` | List 5 lesson terakhir | `/lessons` |
 | `/walletadd` | Simpan wallet untuk track | `/walletadd whale1 0x...` |
@@ -569,6 +611,29 @@ samping tombol attach file.
 | `/wallets` | List wallet tersimpan | `/wallets` |
 
 ### Detail beberapa perintah
+
+#### `/model [name]`
+
+Tanpa argumen: tampilkan model LLM yang aktif sekarang. Dengan argumen: ganti
+model. Disimpan di SQLite — survive restart.
+
+```
+/model                          → Current LLM model: moonshotai/kimi-k2.6
+/model gpt-4o-mini              → LLM model → gpt-4o-mini
+```
+
+Bisa juga dipilih dari menu inline: `/menu → 🤖 Model`.
+
+#### `/trending [coins|topics]`
+
+Tampilkan trending tokens/topics dari CoinGecko atau LunarCrush.
+
+```
+/trending               → Trending coins di Base (CoinGecko/LunarCrush)
+/trending topics        → Trending topics di crypto social media
+```
+
+Bisa diakses dari menu inline: `/menu → 🔥 Trending`.
 
 #### `/learn <window>`
 
@@ -595,10 +660,12 @@ dari saved wallets — fitur ini tersedia sebagai dasar untuk extension.
 
 ## Inline Menu
 
-`/menu` membuka keyboard 4 tombol:
+`/menu` membuka keyboard 6 tombol:
 
 - 📡 **Strategy** — pilih strategi aktif
 - 📈 **Positions** — list posisi terbuka
+- 🔥 **Trending** — trending tokens/topics (CoinGecko/LunarCrush)
+- 🤖 **Model** — lihat/ganti LLM model
 - 🧠 **Lessons** — riwayat learning runs
 - ⚙ **Filters** — parameter strategi aktif
 
