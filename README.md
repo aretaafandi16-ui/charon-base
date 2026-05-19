@@ -5,6 +5,9 @@ Charon-Base is a Telegram trench agent for screening noisy memecoin flow on
 dry-run/confirm/live execution. It is a Base-chain reimplementation of the
 original Solana-focused Charon.
 
+> 🇮🇩 **Versi Bahasa Indonesia**: Dokumentasi lengkap dalam Bahasa Indonesia
+> tersedia di [DOCS.id.md](./DOCS.id.md).
+
 # ALERT
 
 This codebase is in a **testing period**. The author makes no guarantee of any
