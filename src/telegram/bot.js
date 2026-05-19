@@ -8,6 +8,32 @@ const { log, warn } = require('../utils');
 
 let bot;
 
+const COMMAND_LIST = [
+  { command: 'menu', description: 'Open the main menu' },
+  { command: 'strategy', description: 'List or pick active strategy' },
+  { command: 'stratset', description: 'Set a strategy parameter' },
+  { command: 'positions', description: 'Show open positions' },
+  { command: 'candidate', description: 'Inspect a token by address' },
+  { command: 'filters', description: 'Show filters of active strategy' },
+  { command: 'pnl', description: 'Show 7-day PnL summary' },
+  { command: 'learn', description: 'Record a lesson over a window' },
+  { command: 'lessons', description: 'Show recent lessons' },
+  { command: 'walletadd', description: 'Save a wallet to watch' },
+  { command: 'walletremove', description: 'Remove a saved wallet' },
+  { command: 'wallets', description: 'List saved wallets' },
+];
+
+async function registerCommands(b) {
+  try {
+    await b.setMyCommands(COMMAND_LIST, {
+      scope: { type: 'default' },
+    });
+    log('[telegram] commands registered');
+  } catch (e) {
+    warn('[telegram] setMyCommands failed:', e.message);
+  }
+}
+
 function start() {
   if (bot) return bot;
   if (!config.telegram.token) {
@@ -33,6 +59,8 @@ function start() {
       warn('[telegram] callback handler error:', e.message);
     }
   });
+
+  registerCommands(bot);
 
   log('[telegram] bot started');
   return bot;
