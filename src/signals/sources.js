@@ -1,11 +1,16 @@
 'use strict';
 
 const axios = require('axios');
+const PQueue = require('p-queue').default;
 const config = require('../config');
 const { warn } = require('../utils');
 
 const BASE_CHAIN_ID = 8453;
 const BASE_CG_NETWORK = 'base';
+
+// Rate limiters per source. DexScreener is generous; GeckoTerminal is strict (~30 req/min).
+const dexQueue = new PQueue({ interval: 1000, intervalCap: 4, concurrency: 2 });
+const gtQueue = new PQueue({ interval: 1500, intervalCap: 1, concurrency: 1 });
 
 function normalizeFromDexscreener(pair) {
   if (!pair?.baseToken?.address) return null;
@@ -51,9 +56,11 @@ async function fetchDexscreenerTrending() {
     const out = [];
     for (const p of baseProfiles.slice(0, 30)) {
       try {
-        const pairResp = await axios.get(
-          `${config.signals.dexscreenerBaseUrl}/latest/dex/tokens/${p.tokenAddress}`,
-          { timeout: 15_000 },
+        const pairResp = await dexQueue.add(() =>
+          axios.get(
+            `${config.signals.dexscreenerBaseUrl}/latest/dex/tokens/${p.tokenAddress}`,
+            { timeout: 15_000 },
+          ),
         );
         const pair = (pairResp.data?.pairs || [])
           .filter((x) => x.chainId === 'base')
@@ -79,7 +86,10 @@ async function fetchDexscreenerTrending() {
 async function fetchGeckoterminalTrending() {
   const url = `${config.signals.geckoterminalBaseUrl}/networks/${BASE_CG_NETWORK}/trending_pools?include=base_token,quote_token`;
   try {
-    const { data } = await axios.get(url, { timeout: 15_000 });
+    const data = await gtQueue.add(async () => {
+      const resp = await axios.get(url, { timeout: 15_000 });
+      return resp.data;
+    });
     const pools = data?.data || [];
     const included = data?.included || [];
     const tokenLookup = new Map(

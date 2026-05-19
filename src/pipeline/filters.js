@@ -4,6 +4,7 @@ function gateCandidate(candidate, strategy) {
   const reasons = [];
   const c = candidate;
   const s = strategy;
+  const sec = c.security || {};
 
   if ((c.sources?.length || 0) < (s.min_sources ?? 1)) {
     reasons.push(`sources<${s.min_sources}`);
@@ -33,6 +34,22 @@ function gateCandidate(candidate, strategy) {
   if (s.max_price_change_24h != null && c.priceChange24h != null &&
       c.priceChange24h > s.max_price_change_24h) {
     reasons.push(`24h>${s.max_price_change_24h}`);
+  }
+  // Security gates (GoPlus)
+  if (s.block_honeypot && sec.isHoneypot === true) {
+    reasons.push('honeypot');
+  }
+  if (s.max_buy_tax_pct != null && sec.buyTax != null && sec.buyTax > s.max_buy_tax_pct) {
+    reasons.push(`buy_tax>${s.max_buy_tax_pct}`);
+  }
+  if (s.max_sell_tax_pct != null && sec.sellTax != null && sec.sellTax > s.max_sell_tax_pct) {
+    reasons.push(`sell_tax>${s.max_sell_tax_pct}`);
+  }
+  if (s.require_open_source && sec.isOpenSource === false) {
+    reasons.push('not_open_source');
+  }
+  if (s.block_pausable && sec.transferPausable === true) {
+    reasons.push('transfer_pausable');
   }
 
   return { passed: reasons.length === 0, reasons };

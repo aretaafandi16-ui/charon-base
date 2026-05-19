@@ -24,6 +24,8 @@ async function processBatch(rawCandidates) {
 
   const filtered = [];
   const s = stmts();
+  // Enrich one-by-one to keep public APIs (DexScreener, GoPlus) under their
+  // per-second limits. Internal queues add their own backoff on top.
   for (const c of rawCandidates) {
     const enriched = await enrichCandidate(c);
     const { passed, reasons } = gateCandidate(enriched, strategy);

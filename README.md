@@ -26,17 +26,43 @@ financial result. You are responsible for any funds you point at it.
 
 ## Signal Sources
 
-Public sources are used by default — no API key required:
+DexScreener is the default signal source — public, free, no API key:
 
 - DexScreener token profiles + pair lookup (Base chain)
-- GeckoTerminal trending pools (`base` network)
-
-You can also point at your own server (Charon-style):
+- GeckoTerminal trending pools (optional, rate-limited ≈30 req/min)
+- Custom Charon-style server (optional)
 
 ```
+SIGNAL_SOURCES=dexscreener                       # default, recommended
+SIGNAL_SOURCES=dexscreener,geckoterminal         # add GeckoTerminal trending
+SIGNAL_SOURCES=dexscreener,custom                # add private server
 SIGNAL_SERVER_URL=https://your-server/api
 SIGNAL_SERVER_KEY=your_key
-SIGNAL_SOURCES=dexscreener,geckoterminal,custom
+```
+
+## Enrichment (GMGN equivalent)
+
+Charon-Base uses a public GMGN-equivalent stack instead of a single proprietary API:
+
+- **GoPlus Token Security** — automatic, no key. Provides honeypot flag,
+  buy/sell tax, holder count, LP holder count, contract verified flag,
+  proxy / mintable / pausable flags, owner address.
+- **DexScreener** — automatic, no key. Provides price, liquidity, volume,
+  marketcap, price change windows, pair URL.
+- **Moralis Token API** — optional, free key at https://moralis.com.
+  Adds richer holder analytics and 24h buyer/seller counts.
+
+Each enricher has its own rate-limited queue with response caching, so
+hammering `SIGNAL_POLL_MS` low won't blow past public limits.
+
+Strategy filters that consume security data:
+
+```
+block_honeypot          # block any token GoPlus flags as honeypot
+max_buy_tax_pct         # reject if buy tax above threshold (e.g. 5)
+max_sell_tax_pct        # reject if sell tax above threshold
+require_open_source     # require contract source to be verified
+block_pausable          # reject tokens whose transfer can be paused
 ```
 
 ## Install

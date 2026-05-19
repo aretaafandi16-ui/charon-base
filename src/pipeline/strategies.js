@@ -23,6 +23,11 @@ const DEFAULTS = {
     trailing_tp_percent: 25,
     max_hold_ms: 6 * 60 * 60 * 1000,
     partial_tp: 0,
+    block_honeypot: true,
+    max_buy_tax_pct: 5,
+    max_sell_tax_pct: 5,
+    require_open_source: false,
+    block_pausable: true,
   },
   dip_buy: {
     name: 'dip_buy',
@@ -43,6 +48,11 @@ const DEFAULTS = {
     trailing_tp_percent: 20,
     max_hold_ms: 24 * 60 * 60 * 1000,
     partial_tp: 1,
+    block_honeypot: true,
+    max_buy_tax_pct: 3,
+    max_sell_tax_pct: 3,
+    require_open_source: true,
+    block_pausable: true,
   },
   smart_money: {
     name: 'smart_money',
@@ -63,6 +73,11 @@ const DEFAULTS = {
     trailing_tp_percent: 30,
     max_hold_ms: 12 * 60 * 60 * 1000,
     partial_tp: 1,
+    block_honeypot: true,
+    max_buy_tax_pct: 3,
+    max_sell_tax_pct: 3,
+    require_open_source: true,
+    block_pausable: true,
   },
   degen: {
     name: 'degen',
@@ -83,6 +98,11 @@ const DEFAULTS = {
     trailing_tp_percent: 40,
     max_hold_ms: 2 * 60 * 60 * 1000,
     partial_tp: 0,
+    block_honeypot: true,
+    max_buy_tax_pct: 10,
+    max_sell_tax_pct: 10,
+    require_open_source: false,
+    block_pausable: false,
   },
 };
 

@@ -1,21 +1,42 @@
 'use strict';
 
 const { enrichFromDexscreener } = require('./dexscreener');
-const { enrichFromGeckoterminal } = require('./geckoterminal');
+const { enrichFromGoplus } = require('./goplus');
+const { enrichFromMoralis } = require('./moralis');
+
+function mergeNonNull(target, src) {
+  if (!src) return;
+  for (const [k, v] of Object.entries(src)) {
+    if ((target[k] === undefined || target[k] === null) && v != null) {
+      target[k] = v;
+    }
+  }
+}
 
 async function enrichCandidate(c) {
-  const [dex, gt] = await Promise.all([
+  const [dex, gp, mr] = await Promise.all([
     enrichFromDexscreener(c.address),
-    enrichFromGeckoterminal(c.address),
+    enrichFromGoplus(c.address),
+    enrichFromMoralis(c.address),
   ]);
   const merged = { ...c };
-  for (const src of [dex, gt]) {
-    if (!src) continue;
-    for (const [k, v] of Object.entries(src)) {
-      if ((merged[k] === undefined || merged[k] === null) && v != null) {
-        merged[k] = v;
-      }
-    }
+  mergeNonNull(merged, dex);
+  mergeNonNull(merged, gp);
+  mergeNonNull(merged, mr);
+  // Always overwrite security flags from goplus when available.
+  if (gp) {
+    merged.security = {
+      isHoneypot: gp.isHoneypot,
+      buyTax: gp.buyTax,
+      sellTax: gp.sellTax,
+      isOpenSource: gp.isOpenSource,
+      isProxy: gp.isProxy,
+      isMintable: gp.isMintable,
+      transferPausable: gp.transferPausable,
+      blacklist: gp.blacklist,
+      ownerAddress: gp.ownerAddress,
+      creatorAddress: gp.creatorAddress,
+    };
   }
   return merged;
 }

@@ -19,7 +19,7 @@ const config = {
     chatId: process.env.TELEGRAM_CHAT_ID || '',
   },
   signals: {
-    sources: list(process.env.SIGNAL_SOURCES, ['dexscreener', 'geckoterminal']),
+    sources: list(process.env.SIGNAL_SOURCES, ['dexscreener']),
     pollMs: num(process.env.SIGNAL_POLL_MS, 30_000),
     serverUrl: process.env.SIGNAL_SERVER_URL || '',
     serverKey: process.env.SIGNAL_SERVER_KEY || '',
@@ -33,6 +33,9 @@ const config = {
     httpUrl: process.env.BASE_RPC_URL || 'https://mainnet.base.org',
     wsUrl: process.env.BASE_WS_URL || '',
     alchemyKey: process.env.ALCHEMY_API_KEY || '',
+  },
+  enrichment: {
+    moralisApiKey: process.env.MORALIS_API_KEY || '',
   },
   wallet: {
     privateKey: process.env.EVM_PRIVATE_KEY || '',
