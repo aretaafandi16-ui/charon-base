@@ -1,6 +1,6 @@
 'use strict';
 
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const num = (v, d) => {
   const n = Number(v);
